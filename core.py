@@ -1,7 +1,7 @@
 # Program: Trenitalia Holiday Route Watcher
-# Component: Core Checking Logic with LeFrecce API Integration
+# Component: Core Checking Logic with Anti-Bot HTML Shield
 # File: core.py
-# Version: 1.3.0
+# Version: 1.3.3
 # Date: 2026-09-08
 
 import os
@@ -55,7 +55,7 @@ def check_train_route(
 
   formatted_date = target_dt.strftime("%d/%m/%Y 0:00:00")
   api_url = "https://www.lefrecce.it/msite/api/solutions"
-  
+
   params = {
       "origin": origin,
       "destination": destination,
@@ -66,37 +66,52 @@ def check_train_route(
       "childno": "0",
       "direction": "A",
       "frecce": "false",
-      "onlyRegional": "false"
+      "onlyRegional": "false",
   }
-  
+
   headers = {
       "User-Agent": (
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,"
-          " like Gecko) Chrome/120.0.0.0 Safari/537.36"
+          " like Gecko) Chrome/122.0.0.0 Safari/537.36"
       ),
-      "Accept": "application/json"
+      "Accept": "application/json, text/plain, */*",
+      "Accept-Language": "en-US,en;q=0.9,it;q=0.8",
+      "Referer": "https://www.lefrecce.it/",
   }
 
-  print(f"[DEBUG] Querying LeFrecce API endpoint...")
+  print(f"[DEBUG] Querying LeFrecce API endpoint with anti-bot headers...")
 
   try:
     response = requests.get(api_url, params=params, headers=headers, timeout=30)
     print(f"[DEBUG] HTTP Status Code Received: {response.status_code}")
+    print(f"[DEBUG] Content-Type: {response.headers.get('content-type', '')}")
 
-    if response.status_code == 200:
-      data = response.json()
-      solutions = data if isinstance(data, list) else data.get("solutions", [])
-      
-      if solutions:
-        msg = f"[{origin} -> {destination}] ✅ Found {len(solutions)} train options for {travel_date}!"
-        print(f"[DEBUG] {msg}")
-        return True, msg
-      else:
-        msg = f"[{origin} -> {destination}] ⏳ Portal reachable for {travel_date}, but no train solutions are returned yet (tickets not loaded)."
-        print(f"[DEBUG] {msg}")
-        return False, msg
+    # Shield against HTML block pages (Akamai/Cloudflare anti-bot challenges)
+    if response.status_code != 200 or response.text.strip().startswith("<") or "application/json" not in response.headers.get("content-type", ""):
+      msg = (
+          f"[{origin} -> {destination}] 🛡️ Trenitalia anti-bot protection"
+          " intercepted the direct script request. (Normal for server-side"
+          " API queries without browser session cookies)."
+      )
+      print(f"[DEBUG] {msg}")
+      return False, msg
+
+    data = response.json()
+    solutions = data if isinstance(data, list) else data.get("solutions", [])
+
+    if solutions:
+      msg = (
+          f"[{origin} -> {destination}] ✅ Found {len(solutions)} train"
+          f" options for {travel_date}!"
+      )
+      print(f"[DEBUG] {msg}")
+      return True, msg
     else:
-      msg = f"Check failed with status code {response.status_code}"
+      msg = (
+          f"[{origin} -> {destination}] ⏳ Portal reachable for"
+          f" {travel_date}, but zero solutions returned (tickets not yet"
+          " loaded/released)."
+      )
       print(f"[DEBUG] {msg}")
       return False, msg
 
