@@ -4,16 +4,33 @@ on:
   schedule:
     - cron: '0 * * * *'
   workflow_dispatch:
+    inputs:
+      origin:
+        description: 'Departure Station'
+        required: true
+        default: 'Salerno'
+      destination:
+        description: 'Arrival Station'
+        required: true
+        default: 'Catania Centrale'
+      travel_date:
+        description: 'Travel Date (YYYY-MM-DD)'
+        required: true
+        default: '2026-12-23'
+      travelers:
+        description: 'Number of Travelers'
+        required: true
+        default: '14'
 
 jobs:
   run-watcher:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5   # Updated from v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v6   # Updated from v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -23,6 +40,10 @@ jobs:
 
       - name: Run Watcher Script
         env:
+          ORIGIN: ${{ github.event.inputs.origin || 'Salerno' }}
+          DESTINATION: ${{ github.event.inputs.destination || 'Catania Centrale' }}
+          TRAVEL_DATE: ${{ github.event.inputs.travel_date || '2026-12-23' }}
+          TRAVELERS: ${{ github.event.inputs.travelers || '14' }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
