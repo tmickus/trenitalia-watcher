@@ -1,3 +1,9 @@
+# Program: Trenitalia Holiday Route Watcher
+# Component: GitHub Actions Workflow
+# File: .github/workflows/watcher.yml
+# Version: 1.2.0
+# Date: 2026-09-08
+
 name: Trenitalia Hourly Watcher
 
 on:
@@ -36,7 +42,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install requests
+          pip install -r requirements.txt
 
       - name: Run Watcher Script
         env:

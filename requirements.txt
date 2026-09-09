@@ -1,0 +1,8 @@
+# Program: Trenitalia Holiday Route Watcher
+# Component: Dependency Manifest
+# File: requirements.txt
+# Version: 1.0.0
+# Date: 2026-09-08
+
+requests
+streamlit
