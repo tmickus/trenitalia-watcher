@@ -1,7 +1,7 @@
 # Program: Trenitalia Holiday Route Watcher
-# Component: Core Checking Logic with Debugging
+# Component: Core Checking Logic with LeFrecce API Integration
 # File: core.py
-# Version: 1.2.0
+# Version: 1.3.0
 # Date: 2026-09-08
 
 import os
@@ -51,41 +51,56 @@ def check_train_route(
         " standard release window)."
     )
     print(f"[DEBUG] {msg}")
-    print(f"[DEBUG] === CHECK COMPLETE (NO TICKETS LOADED) ===\n")
     return False, msg
 
-  target_url = "https://www.trenitalia.com/"
+  formatted_date = target_dt.strftime("%d/%m/%Y 0:00:00")
+  api_url = "https://www.lefrecce.it/msite/api/solutions"
+  
+  params = {
+      "origin": origin,
+      "destination": destination,
+      "arflag": "A",
+      "adate": formatted_date,
+      "atime": "8",
+      "adultno": str(travelers),
+      "childno": "0",
+      "direction": "A",
+      "frecce": "false",
+      "onlyRegional": "false"
+  }
+  
   headers = {
       "User-Agent": (
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,"
           " like Gecko) Chrome/120.0.0.0 Safari/537.36"
-      )
+      ),
+      "Accept": "application/json"
   }
 
-  print(f"[DEBUG] Querying portal endpoint: {target_url}")
+  print(f"[DEBUG] Querying LeFrecce API endpoint...")
 
   try:
-    response = requests.get(target_url, headers=headers, timeout=30)
+    response = requests.get(api_url, params=params, headers=headers, timeout=30)
     print(f"[DEBUG] HTTP Status Code Received: {response.status_code}")
-    print(f"[DEBUG] Response Body Length: {len(response.text)} characters")
 
     if response.status_code == 200:
-      msg = (
-          f"[{origin} -> {destination}] ⚠️ Portal is reachable for"
-          f" {travel_date}, but direct HTML scraping requires automated"
-          " session cookies or API tokens."
-      )
-      print(f"[DEBUG] {msg}")
-      print(f"[DEBUG] === CHECK COMPLETE (PORTAL REACHABLE) ===\n")
-      return True, msg
+      data = response.json()
+      solutions = data if isinstance(data, list) else data.get("solutions", [])
+      
+      if solutions:
+        msg = f"[{origin} -> {destination}] ✅ Found {len(solutions)} train options for {travel_date}!"
+        print(f"[DEBUG] {msg}")
+        return True, msg
+      else:
+        msg = f"[{origin} -> {destination}] ⏳ Portal reachable for {travel_date}, but no train solutions are returned yet (tickets not loaded)."
+        print(f"[DEBUG] {msg}")
+        return False, msg
     else:
       msg = f"Check failed with status code {response.status_code}"
       print(f"[DEBUG] {msg}")
-      print(f"[DEBUG] === CHECK COMPLETE (FAILED) ===\n")
       return False, msg
 
   except Exception as e:
     err_msg = f"Error executing check: {e}"
     print(f"[DEBUG] Exception encountered: {err_msg}")
-    print(f"[DEBUG] === CHECK COMPLETE (EXCEPTION) ===\n")
     return False, err_msg
